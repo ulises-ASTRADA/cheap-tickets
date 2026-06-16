@@ -1,0 +1,3 @@
+requests>=2.31
+# Opcional, solo para empty_legs.py:
+# playwright>=1.44
