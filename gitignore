@@ -1,0 +1,28 @@
+# Base de datos (histórico de precios, se genera al correr)
+*.db
+flights.db
+
+# Bytecode de Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Logs
+*.log
+cron.log
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# Credenciales / variables de entorno (NUNCA versionar tokens)
+.env
+.env.*
+
+# Archivos del sistema
+.DS_Store
+
+# Editores
+.vscode/
+.idea/
