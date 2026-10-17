@@ -26,3 +26,12 @@ env/
 # Editores
 .vscode/
 .idea/
+
+.env
+.env.*
+!.env.example
+*.db
+*.db-*
+.venv/
+__pycache__/
+*.py[cod]
