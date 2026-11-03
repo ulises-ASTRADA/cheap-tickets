@@ -12,11 +12,20 @@ Operadores con empty legs públicos para Sudamérica / vuelos desde/hacia AR-CL:
   - Flapper (Brasil, fuerte en Sudamérica)
   - Algunos brokers internacionales (Victor, GlobeAir) listan tramos hacia/desde EZE
 
-INSTALAR:  pip install playwright && playwright install chromium
+INSTALAR:  pip install "playwright>=1.64.1" && playwright install chromium
+
+SEGURIDAD (nov 2026): Playwright 1.64.1 trae Chromium 156.0.8078.4, anterior al
+parche de Chrome del 27/10/2026 (156.0.8078.73, 4 CVE críticos). Hasta que salga
+una versión de Playwright con Chromium parcheado, apuntá PLAYWRIGHT_CHROMIUM_EXECUTABLE
+a un Chrome for Testing >= 156.0.8078.80. El navegador corre sin sesiones ni cookies
+guardadas y solo puede navegar a los dominios de EMPTY_LEG_SOURCES.
 
 Este módulo es opcional y artesanal: arranca con la API comercial (main.py),
 y sumá esto cuando quieras cazar empty legs.
 """
+import os
+from urllib.parse import urlparse
+
 from . import notifier
 
 # Configurá acá los sitios a scrapear. Cada uno necesita su parser propio.
@@ -44,12 +53,25 @@ def scrape():
         return []
 
     results = []
+    allowed_hosts = {urlparse(src["url"]).hostname for src in EMPTY_LEG_SOURCES}
+    launch_kwargs = {"headless": True}
+    # Chromium parcheado opcional (ver SEGURIDAD arriba).
+    chromium_exe = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE")
+    if chromium_exe:
+        launch_kwargs["executable_path"] = chromium_exe
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page(user_agent=(
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
-        ))
+        browser = p.chromium.launch(**launch_kwargs)
+        # Contexto efímero: sin storage_state, sin perfil persistente, sin descargas.
+        context = browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+            ),
+            accept_downloads=False,
+            service_workers="block",
+        )
+        context.route("**/*", lambda route: _guard_navigation(route, allowed_hosts))
+        page = context.new_page()
         for src in EMPTY_LEG_SOURCES:
             try:
                 page.goto(src["url"], timeout=45000, wait_until="networkidle")
@@ -69,8 +91,21 @@ def scrape():
                         results.append(leg)
             except Exception as e:
                 print(f"  [!] Error scrapeando {src['name']}: {e}")
+        context.close()
         browser.close()
     return results
+
+
+def _guard_navigation(route, allowed_hosts):
+    """Bloquea navegaciones de página principal fuera de los sitios configurados."""
+    req = route.request
+    if (
+        req.is_navigation_request()
+        and req.frame.parent_frame is None
+        and urlparse(req.url).hostname not in allowed_hosts
+    ):
+        return route.abort()
+    return route.continue_()
 
 
 def _is_relevant(leg):

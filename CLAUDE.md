@@ -95,7 +95,7 @@ Sin `TP_TOKEN`, `main.py` sale limpio con un aviso. Sin credenciales de Telegram
 ## El módulo empty_legs (estado actual)
 
 `empty_legs.py` es un **esqueleto incompleto a propósito**. Los empty legs (tramos vacíos de jets privados) no están en ninguna API comercial; cada operador tiene su sitio con su propio HTML. El módulo:
-- Usa Playwright (maneja JS/Cloudflare mejor que requests).
+- Usa Playwright (maneja JS/Cloudflare mejor que requests). Mínimo 1.64.1; navegador efímero (sin storage_state ni perfil persistente), solo navega a los dominios de `EMPTY_LEG_SOURCES`, y `PLAYWRIGHT_CHROMIUM_EXECUTABLE` permite usar un Chromium parcheado mientras Playwright no traiga uno.
 - Tiene `EMPTY_LEG_SOURCES = []` vacío: hay que cargar cada operador con sus selectores CSS.
 - Filtra por `RELEVANT_AIRPORTS`.
 
